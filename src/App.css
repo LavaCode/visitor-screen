@@ -214,12 +214,6 @@
   margin-right: 10rem;
 }
 
-.ticker-item:not(:last-child)::after {
-  content: "•";
-  position: absolute;
-  right: -1.5rem;
-}
-
 .admin-button {
   position: absolute;
   bottom: 80px;
