@@ -566,11 +566,11 @@
   }
   
   .post-title {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
   }
   
   .post-text {
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
   
   .fixed-media-frame {
@@ -651,4 +651,32 @@
   .settings-section {
     height: fit-content;
   }
+}
+
+@media (max-height: 1000px) {
+  .bottom-bar { 
+    display: none;
+  }
+
+  .post-content {
+    height: 60vh;
+  }
+
+    
+  .post-title {
+    font-size: 1rem;
+  }
+
+  .media-comment {
+    display: none;
+  }
+  .post-text {
+    font-size: 1rem;
+  }
+
+  .post-media-container {
+    height: 50%; 
+  }
+
+
 }
