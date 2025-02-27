@@ -8,7 +8,7 @@ import Parse from 'parse/dist/parse.min.js';
 
 // Environment variables - in a real app these would be in .env file
 const WEATHER_API_KEY = process.env.REACT_APP_WEATHER_API_KEY;
-const CITY_NAME = 'Alkmaar';
+const GEO_API_KEY = process.env.REACT_APP_GEO_API_KEY; 
 Parse.initialize(process.env.REACT_APP_BACK4APP_APP_ID, process.env.REACT_APP_BACK4APP_REST_API_KEY);
 Parse.serverURL = "https://parseapi.back4app.com/";
 
@@ -137,10 +137,11 @@ class ErrorBoundary extends React.Component {
 function KioskDisplay() {
   const [posts, setPosts] = useState(initialPosts);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
+  const [location, setLocation] = useState("");
   const [weather, setWeather] = useState({
     temp: "Loading...",
     condition: "Loading...",
-    city: CITY_NAME
+    city: location
   });
   const [news, setNews] = useState(["Loading the latest news from the Netherlands..."]);
   const [isPostVisible, setIsPostVisible] = useState(true);
@@ -149,6 +150,45 @@ function KioskDisplay() {
   const [rotationTime, setRotationTime] = useState(30000); // 30 seconds
   const [timeRemaining, setTimeRemaining] = useState(rotationTime / 1000);
   const navigate = useNavigate();
+
+  // Get user location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          const apiKey = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your actual API key
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GEO_API_KEY}`
+          );
+          const data = await response.json();
+          console.log(data);
+
+          if (data.results.length > 0) {
+            // Find the city name in the address components
+            const addressComponents = data.results[0].address_components;
+            const cityName = addressComponents.find((component) =>
+              component.types.includes("locality")
+            )?.long_name || "Unknown Location";
+            console.log(cityName);
+            setLocation(cityName);
+          } else {
+            setLocation("Loading");
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setLocation("Error");
+        }
+      );
+    } else {
+      setLocation("Error");
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log("Updated location:", location);
+  }, [location]); // Runs whenever `location` changes
 
   // Fetch posts from Back4App
   useEffect(() => {
@@ -189,7 +229,6 @@ function KioskDisplay() {
     return () => clearInterval(refreshInterval);
   }, []);
 
-  // Get rotation time from localStorage or Back4App settings
   useEffect(() => {
     const getSavedRotationTime = async () => {
       try {
@@ -246,7 +285,7 @@ function KioskDisplay() {
     const fetchWeather = async () => {
       try {
         const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=${CITY_NAME},nl&units=metric&appid=${WEATHER_API_KEY}`
+          `https://api.openweathermap.org/data/2.5/weather?q=${location},nl&units=metric&appid=${WEATHER_API_KEY}`
         );
         const data = await response.json();
 
@@ -254,7 +293,7 @@ function KioskDisplay() {
           setWeather({
             temp: `${Math.floor(data.main.temp)}°C`,
             condition: data.weather[0].description,
-            city: CITY_NAME
+            city: location
           });
         }
       } catch (error) {
@@ -262,7 +301,7 @@ function KioskDisplay() {
         setWeather({
           temp: "N/A",
           condition: "Unavailable",
-          city: CITY_NAME
+          city: location
         });
       }
     };
@@ -271,7 +310,7 @@ function KioskDisplay() {
     const weatherInterval = setInterval(fetchWeather, 3600000); // Refresh every hour
 
     return () => clearInterval(weatherInterval);
-  }, []);
+  }, [location]);
 
   // Change post with animation
   useEffect(() => {
