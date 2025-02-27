@@ -1,6 +1,6 @@
 // App.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom';
 import NewPostSection from './NewPostSection';
 import EditPost from './EditPost';
 import './App.css';
