@@ -8,7 +8,7 @@ import Parse from 'parse/dist/parse.min.js';
 
 // Environment variables - in a real app these would be in .env file
 const WEATHER_API_KEY = process.env.REACT_APP_WEATHER_API_KEY;
-const GEO_API_KEY = process.env.REACT_APP_GEO_API_KEY; 
+const GEO_API_KEY = process.env.REACT_APP_GEO_API_KEY;
 Parse.initialize(process.env.REACT_APP_BACK4APP_APP_ID, process.env.REACT_APP_BACK4APP_REST_API_KEY);
 Parse.serverURL = "https://parseapi.back4app.com/";
 
@@ -137,7 +137,8 @@ class ErrorBoundary extends React.Component {
 function KioskDisplay() {
   const [posts, setPosts] = useState(initialPosts);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(null);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [news, setNews] = useState(["Loading the latest news from the Netherlands..."]);
   const [isPostVisible, setIsPostVisible] = useState(true);
   const [adminBtnVisible, setAdminBtnVisible] = useState(false);
@@ -166,17 +167,18 @@ function KioskDisplay() {
               component.types.includes("locality")
             )?.long_name || "Unknown Location";
             setLocation(cityName);
+            setLocationDenied(false);
           } else {
-            setLocation("Loading");
+            setLocationDenied(true);
           }
         },
         (error) => {
           console.error("Error getting location:", error);
-          setLocation("Error");
+          setLocationDenied(true);
         }
       );
     } else {
-      setLocation("Error");
+      setLocationDenied(true);
     }
   }, []);
 
@@ -192,15 +194,15 @@ function KioskDisplay() {
       const Post = Parse.Object.extend('Post');
       const query = new Parse.Query(Post);
       query.descending("createdAt"); // Get newest posts first
-      
+
       try {
         const results = await query.find();
-        
+
         if (results.length === 0) {
           console.log('No posts found in database, using initial sample post');
           return; // Keep using initialPosts
         }
-        
+
         const parsedPosts = results.map(post => ({
           id: post.id,
           title: post.get('title'),
@@ -210,18 +212,18 @@ function KioskDisplay() {
           mediaComment: post.get('imageComment') || '',
           createdAt: post.get('createdAt').toISOString()
         }));
-        
+
         setPosts(parsedPosts);
       } catch (error) {
         console.error('Error while fetching posts:', error);
       }
     };
-    
+
     fetchPosts();
-    
+
     // Refresh posts periodically
     const refreshInterval = setInterval(fetchPosts, 300000); // Every 5 minutes
-    
+
     return () => clearInterval(refreshInterval);
   }, []);
 
@@ -230,17 +232,17 @@ function KioskDisplay() {
       try {
         // Try to get from localStorage first
         const savedTime = localStorage.getItem('rotationTime');
-        
+
         if (savedTime) {
           setRotationTime(parseInt(savedTime));
           return;
         }
-        
+
         // Fallback to fetching from Back4App
         const Settings = Parse.Object.extend('Settings');
         const query = new Parse.Query(Settings);
         query.equalTo('name', 'rotationTime');
-        
+
         const result = await query.first();
         if (result) {
           const time = result.get('value');
@@ -250,7 +252,7 @@ function KioskDisplay() {
         console.error('Error fetching rotation time:', error);
       }
     };
-    
+
     getSavedRotationTime();
   }, []);
 
@@ -278,6 +280,8 @@ function KioskDisplay() {
 
   // Fetch weather data
   useEffect(() => {
+    if (!location || locationDenied) return;
+
     const fetchWeather = async () => {
       try {
         const response = await fetch(
@@ -306,7 +310,7 @@ function KioskDisplay() {
     const weatherInterval = setInterval(fetchWeather, 3600000); // Refresh every hour
 
     return () => clearInterval(weatherInterval);
-  }, [location]);
+  }, [location, locationDenied]);
 
   // Change post with animation
   useEffect(() => {
@@ -459,13 +463,14 @@ function KioskDisplay() {
         </div>
 
         <div className="bottom-bar">
-          <div className="weather-widget" aria-label={`Weather for ${weather.city}: ${weather.temp}, ${weather.condition}`} tabIndex="0">
-            <div>
-              <span className="weather-temp">{weather.temp}</span>
+          {!locationDenied && weather &&
+            <div className="weather-widget" aria-label={`Weather for ${weather.city}: ${weather.temp}, ${weather.condition}`} tabIndex="0">
+              <div>
+                <span className="weather-temp">{weather.temp}</span>
+              </div>
+              <span className="weather-city">{weather.city}</span>
             </div>
-            <span className="weather-city">{weather.city}</span>
-          </div>
-
+          }
           <div className="news-ticker">
             <div className="ticker-content" tabIndex="0">
               {formattedNews}
@@ -602,9 +607,9 @@ function AdminDashboard() {
         const Post = Parse.Object.extend('Post');
         const query = new Parse.Query(Post);
         query.descending("createdAt");
-        
+
         const results = await query.find();
-        
+
         const parsedPosts = results.map(post => ({
           id: post.id,
           title: post.get('title'),
@@ -614,7 +619,7 @@ function AdminDashboard() {
           mediaComment: post.get('imageComment') || '',
           createdAt: post.get('createdAt').toISOString()
         }));
-        
+
         setPosts(parsedPosts);
       } catch (error) {
         console.error('Error fetching posts:', error);
@@ -622,7 +627,7 @@ function AdminDashboard() {
         setIsLoading(false);
       }
     };
-    
+
     // Get rotation settings
     const getRotationSettings = async () => {
       try {
@@ -636,7 +641,7 @@ function AdminDashboard() {
           const Settings = Parse.Object.extend('Settings');
           const query = new Parse.Query(Settings);
           query.equalTo('name', 'rotationTime');
-          
+
           const result = await query.first();
           if (result) {
             const time = result.get('value');
@@ -649,7 +654,7 @@ function AdminDashboard() {
         console.error('Error fetching rotation settings:', error);
       }
     };
-    
+
     fetchPosts();
     getRotationSettings();
   }, []);
@@ -670,7 +675,7 @@ function AdminDashboard() {
         const query = new Parse.Query(Post);
         const parseObject = await query.get(postId);
         await parseObject.destroy();
-        
+
         // Update local state
         setPosts(posts.filter(post => post.id !== postId));
       } catch (error) {
@@ -692,20 +697,20 @@ function AdminDashboard() {
       const Post = Parse.Object.extend('Post');
       const query = new Parse.Query(Post);
       const parseObject = await query.get(editingPost.id);
-      
+
       parseObject.set('title', editingPost.title);
       parseObject.set('content', editingPost.text);
       parseObject.set('mediaType', editingPost.mediaType);
       parseObject.set('mediaUrl', editingPost.mediaUrl);
       parseObject.set('imageComment', editingPost.mediaComment);
-      
+
       await parseObject.save();
-      
+
       // Update local state
       setPosts(posts.map(post =>
         post.id === editingPost.id ? editingPost : post
       ));
-      
+
       setIsEditing(false);
       setEditingPost(null);
     } catch (error) {
@@ -725,15 +730,15 @@ function AdminDashboard() {
       // Save to Back4App
       const Post = Parse.Object.extend('Post');
       const parseObject = new Post();
-      
+
       parseObject.set('title', newPostData.title);
       parseObject.set('content', newPostData.text);
       parseObject.set('mediaType', newPostData.mediaType);
       parseObject.set('mediaUrl', newPostData.mediaUrl);
       parseObject.set('imageComment', newPostData.mediaComment);
-      
+
       const savedPost = await parseObject.save();
-      
+
       // Add to local state
       const newPostWithId = {
         id: savedPost.id,
@@ -744,7 +749,7 @@ function AdminDashboard() {
         mediaComment: newPostData.mediaComment,
         createdAt: savedPost.get('createdAt').toISOString()
       };
-      
+
       setPosts([...posts, newPostWithId]);
       setIsAdding(false);
     } catch (error) {
@@ -757,26 +762,26 @@ function AdminDashboard() {
   const handleSaveSettings = async () => {
     try {
       const timeInMs = rotationSettings.time * 1000;
-      
+
       // Save to localStorage first (for faster access)
       localStorage.setItem('rotationTime', timeInMs.toString());
-      
+
       // Then save to Back4App
       const Settings = Parse.Object.extend('Settings');
       const query = new Parse.Query(Settings);
       query.equalTo('name', 'rotationTime');
-      
+
       let settingsObject = await query.first();
-      
+
       if (!settingsObject) {
         // Create new settings if doesn't exist
         settingsObject = new Settings();
         settingsObject.set('name', 'rotationTime');
       }
-      
+
       settingsObject.set('value', timeInMs.toString());
       await settingsObject.save();
-      
+
       alert('Settings saved successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -874,7 +879,7 @@ function AdminDashboard() {
           </div>
         </div>
       ) : null}
-      
+
       {isEditing && (
         <EditPost
           editingPost={editingPost}
@@ -885,9 +890,9 @@ function AdminDashboard() {
       )}
 
       {isAdding && (
-        <NewPostSection 
+        <NewPostSection
           addPost={handleAddPost}
-          cancelAdd={() => setIsAdding(false)} 
+          cancelAdd={() => setIsAdding(false)}
         />
       )}
     </div>
