@@ -138,11 +138,6 @@ function KioskDisplay() {
   const [posts, setPosts] = useState(initialPosts);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [location, setLocation] = useState("");
-  const [weather, setWeather] = useState({
-    temp: "Loading...",
-    condition: "Loading...",
-    city: location
-  });
   const [news, setNews] = useState(["Loading the latest news from the Netherlands..."]);
   const [isPostVisible, setIsPostVisible] = useState(true);
   const [adminBtnVisible, setAdminBtnVisible] = useState(false);
@@ -170,7 +165,6 @@ function KioskDisplay() {
             const cityName = addressComponents.find((component) =>
               component.types.includes("locality")
             )?.long_name || "Unknown Location";
-            console.log(cityName);
             setLocation(cityName);
           } else {
             setLocation("Loading");
@@ -186,9 +180,11 @@ function KioskDisplay() {
     }
   }, []);
 
-  useEffect(() => {
-    console.log("Updated location:", location);
-  }, [location]); // Runs whenever `location` changes
+  const [weather, setWeather] = useState({
+    temp: "Loading...",
+    condition: "Loading...",
+    city: location
+  });
 
   // Fetch posts from Back4App
   useEffect(() => {
