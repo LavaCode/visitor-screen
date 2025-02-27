@@ -2,7 +2,7 @@
   "name": "post-page",
   "version": "0.1.0",
   "private": true,
-  "homepage": "http://lavacode.github.io/posts-display",
+  "homepage": "http://lavacode.github.io/visitor-screen",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
